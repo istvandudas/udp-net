@@ -37,7 +37,7 @@ jobs:
     - name: Generate Jacoco Badge
       uses: cicirello/jacoco-badge-generator@v2
       with:
-        jacoco-report-path: "**/jacocoTestReport.xml"
+        jacoco-report-path: "build/reports/jacoco/test/jacocoTestReport.xml"
     - name: Commit badge
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
