@@ -1,0 +1,100 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+    id 'io.freefair.lombok' version '9.1.0'
+}
+
+group = 'org.net.endpoint'
+version = '1.0-SNAPSHOT'
+java {
+    sourceCompatibility = JavaVersion.toVersion("25")
+    targetCompatibility = JavaVersion.toVersion("25")
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
+    }
+    withSourcesJar()
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation("it.unimi.dsi:fastutil:$fastutilsVersion")
+    implementation("org.hdrhistogram:HdrHistogram:$hdrHistogramVersion")
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("org.jctools:jctools-core-jdk11:$jctoolsVersion")
+    testImplementation(platform("org.junit:junit-bom:$junitVersion"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.assertj:assertj-core:$assertJVersion")
+    testImplementation("org.mockito:mockito-junit-jupiter:$mockitoVersion")
+    testImplementation("org.mockito:mockito-core:$mockitoVersion")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.register('stressTest', Test) {
+    description = "Runs only stress tests"
+    group = "verification"
+
+    useJUnitPlatform {
+        includeTags "stress"
+    }
+
+    // Show logs for perf tests
+    testLogging {
+        showStandardStreams = true
+        events "passed", "skipped", "failed"
+    }
+
+    // Optional: use same classpath as normal tests
+    classpath = sourceSets.test.runtimeClasspath
+    testClassesDirs = sourceSets.test.output.classesDirs
+}
+
+test {
+    useJUnitPlatform() {
+        if (project.hasProperty("stress")) {
+            includeTags "stress"
+        } else {
+            excludeTags "stress"
+        }
+    }
+    if (project.hasProperty("stress")) {
+        testLogging {
+            showStandardStreams = true
+            events "passed", "skipped", "failed"
+        }
+    }
+    jvmArgs += "-Xshare:off"
+    jvmArgs += '--enable-native-access=ALL-UNNAMED'
+    jvmArgs += [
+            "-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains('mockito-core') }}"
+    ]
+}
+
+jacocoTestReport {
+    dependsOn test
+    afterEvaluate {
+        classDirectories.setFrom(
+                files(classDirectories.files.collect {
+                    fileTree(
+                            dir: it,
+                            exclude: [
+                                    '**/*Generated*',
+                                    '**/Reliability.class',
+                                    '**/Protocol.class'
+                            ]
+                    )
+                })
+        )
+    }
+}
+
+test {
+    finalizedBy jacocoTestReport
+}
+
