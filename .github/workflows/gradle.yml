@@ -35,7 +35,7 @@ jobs:
     - name: Test coverage with Jacoco
       run: ./gradlew test jacocoTestReport -Pcoverage
     - name: Generate Jacoco Badge
-      uses: cicirello/jacoco-badge-generator@v2
+      uses: cicirello/jacoco-badge-generator@v3
       with:
         jacoco-report-path: "build/reports/jacoco/test/jacocoTestReport.xml"
     - name: Commit badge
