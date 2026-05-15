@@ -4,8 +4,6 @@
 
 ![Coverage](./.github/badges/jacoco.svg)
 
-
-
 ## Packet Polling Strategies
 - pure busy‑spin
 - pure park
