@@ -1,7 +1,5 @@
 ## Build & Test Status
-
-![Build](https://github.com/istvandudas/udp-net/actions/workflows/java-ci-with-gradle.yml/badge.svg)
-
+![Build](https://github.com/istvandudas/udp-net/actions/workflows/gradle.yml/badge.svg)
 ![Coverage](./.github/badges/jacoco.svg)
 
 ## Packet Polling Strategies
