@@ -148,4 +148,23 @@ class BufferPoolTest {
 		verify(mtuPool).giveBack(mtuBuffer);
 		assertThat(second).isSameAs(mtuBuffer);
 	}
+
+	@Test
+	void statCombinesCmdAndDataStat() {
+		// GIVEN
+		ObjectPool<ByteBuffer> cmdPool = mock(ObjectPool.class);
+		ObjectPool<ByteBuffer> mtuPool = mock(ObjectPool.class);
+		ByteBuffer mtuBuffer = ByteBuffer.allocateDirect(BufferPool.DATA_BUFFER_SIZE);
+		when(mtuPool.borrow()).thenReturn(mtuBuffer);
+		BufferPool pool = new BufferPool(cmdPool, mtuPool);
+
+		// WHEN
+		String actual = pool.stat();
+
+		// THEN
+		verify(mtuPool).stat();
+		verify(cmdPool).stat();
+		assertThat(actual).isNotNull();
+	}
+
 }
