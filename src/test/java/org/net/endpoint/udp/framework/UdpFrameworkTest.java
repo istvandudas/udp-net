@@ -290,16 +290,34 @@ class UdpFrameworkTest {
 	}
 
 	@Test
-	void sendData_returnsTrue() {
+	void sendData() {
 		// GIVEN
-		ByteBuffer data = ByteBuffer.wrap(new byte[]{1, 2, 3});
-		ByteBuffer buffer = ByteBuffer.allocate(64);
+		ByteBuffer data = ByteBuffer.allocateDirect(2048).position(142).flip();
+		ByteBuffer buffer = ByteBuffer.allocateDirect(1200);
 		given(bufferPool.createForData()).willReturn(buffer);
+		given(sender.send(any(), any(), eq(true))).willReturn(true);
 
 		// WHEN
-		framework.sendData(ADDRESS, csi, ssi, data);
+		int actual = framework.sendData(ADDRESS, csi, ssi, data);
 
 		// THEN
+		assertThat(actual).isEqualTo(142 + 34);
+		verify(sender).send(eq(buffer), eq(ADDRESS), eq(true));
+	}
+
+	@Test
+	void sendData_cannotCreateMoreSendRequest() {
+		// GIVEN
+		ByteBuffer data = ByteBuffer.allocateDirect(2048).position(142).flip();
+		ByteBuffer buffer = ByteBuffer.allocateDirect(1200);
+		given(bufferPool.createForData()).willReturn(buffer);
+		given(sender.send(any(), any(), eq(true))).willReturn(false);
+
+		// WHEN
+		int actual = framework.sendData(ADDRESS, csi, ssi, data);
+
+		// THEN
+		assertThat(actual).isZero();
 		verify(sender).send(eq(buffer), eq(ADDRESS), eq(true));
 	}
 
@@ -519,5 +537,80 @@ class UdpFrameworkTest {
 		assertThatThrownBy(() -> framework.readHeader(cmdBuffer, csi, null))
 				.isInstanceOf(NullPointerException.class)
 				.hasMessage("ssi is marked non-null but is null");
+	}
+
+	@Test
+	void createConnection_cannotCreateMoreBuffer() {
+		// GIVEN
+		given(bufferPool.createForCmd()).willReturn(null);
+
+		// WHEN
+		framework.sendCreateConnection(ADDRESS, csi);
+
+		// THEN
+		verify(sender, never()).send(any(), any(), eq(true));
+	}
+
+	@Test
+	void connectionAccepted_cannotCreateMoreBuffer() {
+		// GIVEN
+		given(bufferPool.createForCmd()).willReturn(null);
+
+		// WHEN
+		framework.sendConnectionAccepted(ADDRESS, csi, ssi);
+
+		// THEN
+		verify(sender, never()).send(any(), any(), eq(true));
+	}
+
+	@Test
+	void connectionRejected_cannotCreateMoreBuffer() {
+		// GIVEN
+		given(bufferPool.createForCmd()).willReturn(null);
+
+		// WHEN
+		framework.sendConnectionRejected(ADDRESS, csi);
+
+		// THEN
+		verify(sender, never()).send(any(), any(), eq(true));
+	}
+
+	@Test
+	void connectionClosed_cannotCreateMoreBuffer() {
+		// GIVEN
+		given(bufferPool.createForCmd()).willReturn(null);
+
+		// WHEN
+		framework.sendConnectionClosed(ADDRESS, csi, ssi);
+
+		// THEN
+		verify(sender, never()).send(any(), any(), eq(true));
+	}
+
+	@Test
+	void heartbeat_cannotCreateMoreBuffer() {
+		// GIVEN
+		given(bufferPool.createForCmd()).willReturn(null);
+
+		// WHEN
+		framework.sendHeartbeat(ADDRESS, csi, ssi);
+
+		// THEN
+		verify(sender, never()).send(any(), any(), eq(true));
+	}
+
+	@Test
+	void sendData_cannotCreateMoreBuffer() {
+		// GIVEN
+		given(bufferPool.createForData()).willReturn(null);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(2048);
+		buffer.position(142).flip();
+
+		// WHEN
+		int actual = framework.sendData(ADDRESS, csi, ssi, buffer);
+
+		// THEN
+		assertThat(actual).isZero();
+		verify(sender, never()).send(any(), any(), eq(true));
 	}
 }

@@ -8,6 +8,7 @@ import org.net.endpoint.udp.connection.PendingConnection;
 import org.net.endpoint.udp.connection.UnreliableUdpConnection;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.ClosedChannelException;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
@@ -35,12 +36,11 @@ public class UnreliableUdpEndpoint extends UdpEndpoint implements Endpoint, Runn
 	public void run() {
 		HandlerContext context = new HandlerContext(config.name(), connMgr, metrics, listeners, incomingBuffer);
 		try {
-			log.info("{} is listening on ({}:{})", config.name(), address.getHostName(), effectivePort);
 			while (running.get()) {
 				InetSocketAddress sender;
 				incomingBuffer.clear();
 				try {
-					while (running.get() && (sender = (InetSocketAddress) channel.receive(incomingBuffer)) != null) {
+					while (running.get() && (sender = channel.receive(incomingBuffer)) != null) {
 						incomingBuffer.flip();
 						context.address(sender);
 						int packetSize = incomingBuffer.remaining();
@@ -56,9 +56,10 @@ public class UnreliableUdpEndpoint extends UdpEndpoint implements Endpoint, Runn
 						}
 						incomingBuffer.clear();
 					}
-				} catch (java.nio.channels.ClosedChannelException e) {
+				} catch (ClosedChannelException e) {
 					if (running.get()) {
 						log.error("{} channel closed unexpectedly!", config.name(), e);
+						running.set(false);
 					}
 					break;
 				}

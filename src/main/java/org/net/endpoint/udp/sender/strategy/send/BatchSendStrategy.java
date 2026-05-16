@@ -9,8 +9,9 @@ import org.net.endpoint.udp.sender.SendRequest;
 import org.net.endpoint.udp.sender.strategy.poll.PollStrategy;
 import org.net.endpoint.udp.sender.strategy.poll.ThreePhaseWaitStrategy;
 
+import org.net.endpoint.udp.endpoint.UdpDatagramChannel;
+
 import java.io.IOException;
-import java.nio.channels.DatagramChannel;
 import java.util.Queue;
 
 @Slf4j
@@ -18,7 +19,7 @@ public class BatchSendStrategy implements SendStrategy<SendRequest> {
 	private final BatchPolicy policy;
 	private final PollStrategy<SendRequest> pollStrategy;
 	private final TimeMachine timeMachine;
-	private final DatagramChannel channel;
+	private final UdpDatagramChannel channel;
 	private final PacketSenderMetrics metrics;
 	private final SendRequest[] batch;
 	private final int maxPollCount;
@@ -26,7 +27,7 @@ public class BatchSendStrategy implements SendStrategy<SendRequest> {
 	private final BufferPool bufferPool;
 
 	public BatchSendStrategy(
-			DatagramChannel channel,
+			UdpDatagramChannel channel,
 			TimeMachine timeMachine,
 			PacketSenderMetrics metrics,
 			BufferPool bufferPool
@@ -44,7 +45,7 @@ public class BatchSendStrategy implements SendStrategy<SendRequest> {
 	public BatchSendStrategy(
 			BatchPolicy policy,
 			PollStrategy<SendRequest> pollStrategy,
-			DatagramChannel channel,
+			UdpDatagramChannel channel,
 			TimeMachine timeMachine,
 			PacketSenderMetrics metrics,
 			BufferPool bufferPool
@@ -79,12 +80,11 @@ public class BatchSendStrategy implements SendStrategy<SendRequest> {
 		int batchBytes = 0;
 		for (int i = 0; i < pollCount; i++) {
 			SendRequest req = batch[i];
-			if (req == null) continue;
 			long startSending = timeMachine.nanoNow();
 			int contentSize = req.writeableSize();
 			try {
-				req.getBuffer().position(0);
-				sentBytes = channel.send(req.getBuffer(), req.getTarget());
+				req.buffer().position(0);
+				sentBytes = channel.send(req.buffer(), req.target());
 				metrics.recordPacketSent(timeMachine.nanoElapsed(startSending));
 				batchBytes += sentBytes;
 				metrics.addSentBytes(sentBytes);
@@ -100,8 +100,8 @@ public class BatchSendStrategy implements SendStrategy<SendRequest> {
 			} catch (IOException e) {
 				metrics.incrementErrorCount();
 			} finally {
-				if (req.isRelease()) {
-					bufferPool.release(req.getBuffer());
+				if (req.releaseAfterSend()) {
+					bufferPool.release(req.buffer());
 				}
 				req.release();
 			}

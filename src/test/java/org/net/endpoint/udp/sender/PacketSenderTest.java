@@ -7,17 +7,18 @@ import org.net.endpoint.udp.endpoint.UdpEndpoint;
 import org.net.endpoint.udp.sender.strategy.send.BatchSendStrategy;
 import org.net.endpoint.udp.sender.strategy.send.SendStrategy;
 
+import org.net.endpoint.udp.endpoint.UdpDatagramChannel;
+
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
 import java.util.Queue;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @SuppressWarnings({"DataFlowIssue", "unchecked", "FieldCanBeLocal", "rawtypes"})
 class PacketSenderTest {
@@ -27,11 +28,12 @@ class PacketSenderTest {
 	// the test subject
 	private PacketSender sender;
 	private TimeMachine timeMachine;
-	private DatagramChannel channel;
+	private UdpDatagramChannel channel;
 	private Queue queue;
 	private PacketSenderMetrics metrics;
 	private BufferPool bufferPool;
 	private ByteBuffer buffer;
+	private Supplier<SendRequest> sendRequestSupplier;
 
 	@Test
 	void construct() {
@@ -53,7 +55,8 @@ class PacketSenderTest {
 				null,
 				mock(PacketSenderMetrics.class),
 				mock(SendStrategy.class),
-				mock(Queue.class)
+				mock(Queue.class),
+				mock(Supplier.class)
 		))
 				.isInstanceOf(NullPointerException.class)
 				.hasMessage("name is marked non-null but is null");
@@ -66,7 +69,8 @@ class PacketSenderTest {
 				"test",
 				null,
 				mock(SendStrategy.class),
-				mock(Queue.class)
+				mock(Queue.class),
+				mock(Supplier.class)
 		))
 				.isInstanceOf(NullPointerException.class)
 				.hasMessage("metrics is marked non-null but is null");
@@ -79,7 +83,8 @@ class PacketSenderTest {
 				"test",
 				mock(PacketSenderMetrics.class),
 				null,
-				mock(Queue.class)
+				mock(Queue.class),
+				mock(Supplier.class)
 		))
 				.isInstanceOf(NullPointerException.class)
 				.hasMessage("sendStrategy is marked non-null but is null");
@@ -104,6 +109,7 @@ class PacketSenderTest {
 		given(queue.offer(any())).willReturn(true);
 		givenSender(queue);
 		buffer = givenBuffer();
+		given(sendRequestSupplier.get()).willReturn(SendRequest.create());
 
 		// WHEN
 		boolean actual = sender.send(buffer, ADDRESS, true);
@@ -115,12 +121,30 @@ class PacketSenderTest {
 	}
 
 	@Test
+	void send_cannotRegisterMoreSendRequest() {
+		// GIVEN
+		queue = mock(Queue.class);
+		given(queue.offer(any())).willReturn(true);
+		givenSender(queue);
+		buffer = givenBuffer();
+
+		// WHEN
+		boolean actual = sender.send(buffer, ADDRESS, true);
+
+		// THEN
+		assertThat(actual).isFalse();
+		assertThat(sender.metrics().enqueuedPacketCount()).isZero();
+		verify(queue, never()).offer(any(SendRequest.class));
+	}
+
+
+	@Test
 	void send_queueOfferFails() {
 		// GIVEN
 		queue = mock(Queue.class);
 		given(queue.offer(any())).willReturn(false);
-
 		givenSender(queue);
+		given(sendRequestSupplier.get()).willReturn(SendRequest.create());
 		buffer = givenBuffer();
 
 		// WHEN
@@ -159,16 +183,18 @@ class PacketSenderTest {
 	}
 
 	private void givenSender(Queue<SendRequest> queue) {
-		channel = mock(DatagramChannel.class);
+		channel = mock(UdpDatagramChannel.class);
 		timeMachine = mock(TimeMachine.class);
 		metrics = new PacketSenderMetrics();
 		bufferPool = mock(BufferPool.class);
+		sendRequestSupplier = mock(Supplier.class);
 
 		sender = new PacketSender(
 				"test-sender",
 				metrics,
 				new BatchSendStrategy(channel, timeMachine, metrics, bufferPool),
-				queue
+				queue,
+				sendRequestSupplier
 		);
 	}
 

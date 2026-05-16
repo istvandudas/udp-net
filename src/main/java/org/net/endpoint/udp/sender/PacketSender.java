@@ -10,6 +10,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.function.Supplier;
 
 @Slf4j
 public class PacketSender extends NetService implements Runnable {
@@ -19,21 +20,24 @@ public class PacketSender extends NetService implements Runnable {
 	private final Queue<SendRequest> queue;
 	private final PacketSenderMetrics metrics;
 	private final SendStrategy<SendRequest> sendStrategy;
+	private final Supplier<SendRequest> requestSupplier;
 
 
 	public PacketSender(String name, PacketSenderMetrics metrics, SendStrategy<SendRequest> sendStrategy) {
-		this(name, metrics, sendStrategy, null);
+		this(name, metrics, sendStrategy, null, SendRequest::create);
 	}
 
 	public PacketSender(@NonNull String name,
 						@NonNull PacketSenderMetrics metrics,
 						@NonNull SendStrategy<SendRequest> sendStrategy,
-						Queue<SendRequest> queue
+						Queue<SendRequest> queue,
+						Supplier<SendRequest> requestSupplier
 	) {
 		super(name + NAME_POSTFIX, false);
 		this.queue = Objects.requireNonNullElseGet(queue, () -> new MpscVarHandleArrayQueue<>(DEFAULT_QUEUE_CAPACITY));
 		this.metrics = metrics;
 		this.sendStrategy = sendStrategy;
+		this.requestSupplier = requestSupplier;
 	}
 
 	public PacketSenderMetricsView metrics() {
@@ -41,7 +45,7 @@ public class PacketSender extends NetService implements Runnable {
 	}
 
 	public boolean send(@NonNull ByteBuffer buffer, @NonNull SocketAddress target, boolean release) {
-		SendRequest request = SendRequest.create();
+		SendRequest request = requestSupplier.get();
 		if (request == null) {
 			return false;
 		}
@@ -51,7 +55,7 @@ public class PacketSender extends NetService implements Runnable {
 			return true;
 		}
 		else {
-			request.release();
+			request.releaseAfterSend();
 			return false;
 		}
 	}

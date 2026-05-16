@@ -43,7 +43,7 @@ public abstract class UdpEndpoint extends NetService implements Endpoint {
 	protected final BufferPool bufferPool;
 
 	protected InetSocketAddress address;
-	protected DatagramChannel channel;
+	protected UdpDatagramChannel channel;
 	protected ConnectionManager connMgr;
 	protected PacketSender sender;
 	protected UdpFramework udpFramework;
@@ -81,7 +81,7 @@ public abstract class UdpEndpoint extends NetService implements Endpoint {
 
 	@Override
 	protected void beforeStart() throws Exception {
-		channel = DatagramChannel.open();
+		channel = new UdpDatagramChannel(DatagramChannel.open());
 		address = new InetSocketAddress(config.host(), config.port());
 		channel.bind(address);
 		channel.configureBlocking(false);
@@ -97,7 +97,8 @@ public abstract class UdpEndpoint extends NetService implements Endpoint {
 						senderMetrics,
 						bufferPool
 				),
-				new MpscVarHandleArrayQueue<SendRequest>(DEFAULT_QUEUE_CAPACITY)
+				new MpscVarHandleArrayQueue<SendRequest>(DEFAULT_QUEUE_CAPACITY),
+				SendRequest::create
 		);
 		sender.start().await();
 		udpFramework = new UdpFramework(bufferPool, sender);

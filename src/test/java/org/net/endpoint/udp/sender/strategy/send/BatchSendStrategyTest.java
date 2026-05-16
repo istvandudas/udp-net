@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.net.endpoint.common.BufferPool;
 import org.net.endpoint.common.TimeMachine;
+import org.net.endpoint.udp.endpoint.UdpDatagramChannel;
 import org.net.endpoint.udp.sender.PacketSenderMetrics;
 import org.net.endpoint.udp.sender.SendRequest;
 import org.net.endpoint.udp.sender.strategy.poll.PollStrategy;
@@ -18,7 +19,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,7 +38,7 @@ class BatchSendStrategyTest {
 	// the test subject
 	private BatchSendStrategy strategy;
 
-	private DatagramChannel channel;
+	private UdpDatagramChannel channel;
 	private TimeMachine timeMachine;
 	private PacketSenderMetrics metrics;
 	private BatchPolicy batchPolicy;
@@ -54,7 +54,7 @@ class BatchSendStrategyTest {
 
 	@BeforeEach
 	void setUp() {
-		channel = mock(DatagramChannel.class);
+		channel = mock(UdpDatagramChannel.class);
 		timeMachine = mock(TimeMachine.class);
 		metrics = mock(PacketSenderMetrics.class);
 		batchPolicy = mock(BatchPolicy.class);
@@ -113,8 +113,8 @@ class BatchSendStrategyTest {
 		// THEN
 		assertThat(actual).isEqualTo(2);
 
-		verify(request1).release();
-		verify(request2).release();
+		verify(request1).releaseAfterSend();
+		verify(request2).releaseAfterSend();
 	}
 
 	@Test
@@ -207,7 +207,7 @@ class BatchSendStrategyTest {
 		verify(metrics, never()).incrementUnsentPacketCount();
 		verify(metrics, never()).addDroppedBytes(anyLong());
 
-		verify(request1).release();
+		verify(request1).releaseAfterSend();
 	}
 
 	private static Stream<Arguments> send_multiple() {
@@ -291,8 +291,8 @@ class BatchSendStrategyTest {
 
 		for (int i = 0; i < requestCount; i++) {
 			SendRequest req = availableRequests.get(i);
-			bufs.add(req.getBuffer());
-			addrs.add(req.getTarget());
+			bufs.add(req.buffer());
+			addrs.add(req.target());
 			sizes.add(req.writeableSize());
 		}
 
@@ -374,7 +374,7 @@ class BatchSendStrategyTest {
 		assertThat(metricsBytesCaptor.getAllValues()).hasSize(expectedSentPacketCount);
 		for (int i = 0; i < expectedSentPacketCount; i++) {
 			assertThat(metricsBytesCaptor.getAllValues().get(i))
-					.isEqualTo(availableRequests.get(i).getBuffer().capacity());
+					.isEqualTo(availableRequests.get(i).buffer().capacity());
 		}
 
 		verify(metrics, never()).incrementPartiallySentPacketCount();
@@ -396,10 +396,10 @@ class BatchSendStrategyTest {
 	private static SendRequest givenRequest(int size, boolean release) {
 		SendRequest request = mock(SendRequest.class);
 		ByteBuffer buffer = ByteBuffer.allocate(size);
-		given(request.getBuffer()).willReturn(buffer);
+		given(request.buffer()).willReturn(buffer);
 		given(request.writeableSize()).willReturn(size);
-		given(request.getTarget()).willReturn(new InetSocketAddress("localhost", 5555));
-		given(request.isRelease()).willReturn(release);
+		given(request.target()).willReturn(new InetSocketAddress("localhost", 5555));
+		given(request.releaseAfterSend()).willReturn(release);
 		return request;
 	}
 
@@ -428,12 +428,12 @@ class BatchSendStrategyTest {
 	}
 
 	private void verifyRequestReleased(SendRequest request, boolean release) {
-		verify(request).release();
+		verify(request).releaseAfterSend();
 		if (release) {
-			verify(bufferPool).release(request.getBuffer());
+			verify(bufferPool).release(request.buffer());
 		}
 		else {
-			verify(bufferPool, never()).release(request.getBuffer());
+			verify(bufferPool, never()).release(request.buffer());
 		}
 	}
 
@@ -463,8 +463,8 @@ class BatchSendStrategyTest {
 		given(queue.poll()).willReturn(request2, (SendRequest) null);
 		given(queue.size()).willReturn(1);
 
-		given(channel.send(request1.getBuffer(), request1.getTarget())).willReturn(sentBytes1);
-		given(channel.send(request2.getBuffer(), request2.getTarget())).willReturn(sentBytes2);
+		given(channel.send(request1.buffer(), request1.target())).willReturn(sentBytes1);
+		given(channel.send(request2.buffer(), request2.target())).willReturn(sentBytes2);
 
 		given(batchPolicy.calculateTimeWindow(1)).willReturn(30L);
 		given(timeMachine.nanoNow()).willReturn(10L, 45L, 60L, 80L, 99L);

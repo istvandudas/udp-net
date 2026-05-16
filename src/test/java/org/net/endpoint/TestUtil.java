@@ -15,10 +15,10 @@ public final class TestUtil {
 	public static final String NORMAL_PROFILE = "normal";
 
 	public static final int TEST_INCOMING_BUFFER_SIZE = 1024;
-	public static final long TEST_MAINTENANCE_INTERVAL = Duration.ofMillis(1).toNanos();
-	public static final long TEST_HEARTBEAT_INTERVAL = Duration.ofMillis(2).toNanos();
-	public static final long TEST_HEARTBEAT_TIMEOUT = Duration.ofMillis(6).toNanos();
-	public static final long TEST_IDLE_TIMEOUT = Duration.ofMillis(30).toNanos();
+	public static final long TEST_MAINTENANCE_INTERVAL = Duration.ofMillis(100).toNanos();
+	public static final long TEST_HEARTBEAT_INTERVAL = Duration.ofMillis(200).toNanos();
+	public static final long TEST_HEARTBEAT_TIMEOUT = Duration.ofMillis(600).toNanos();
+	public static final long TEST_IDLE_TIMEOUT = Duration.ofMillis(3000).toNanos();
 	public static final int TEST_MAX_INCOMING_CONNECTION_COUNT = 2;
 	public static final int TEST_MAX_OUTGOING_CONNECTION_COUNT = 2;
 

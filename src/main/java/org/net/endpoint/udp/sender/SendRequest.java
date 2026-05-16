@@ -1,7 +1,8 @@
 package org.net.endpoint.udp.sender;
 
-import lombok.Getter;
-import lombok.ToString;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 import org.net.endpoint.common.ObjectPool;
 import org.net.endpoint.common.ObjectPoolStat;
 import org.net.endpoint.common.PooledObjectBase;
@@ -9,14 +10,15 @@ import org.net.endpoint.common.PooledObjectBase;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
-@Getter
-@ToString
+@Data
+@EqualsAndHashCode(callSuper = false)
+@Accessors(fluent = true)
 public class SendRequest extends PooledObjectBase {
 	private final static ObjectPool<SendRequest> POOL = new ObjectPool<>(SendRequest::new);
 
 	private ByteBuffer buffer;
 	private SocketAddress target;
-	private boolean release;
+	private boolean releaseAfterSend;
 
 	private SendRequest() {
 	}
@@ -28,7 +30,7 @@ public class SendRequest extends PooledObjectBase {
 	public void set(ByteBuffer buffer, SocketAddress target, boolean release) {
 		this.buffer = buffer;
 		this.target = target;
-		this.release = release;
+		this.releaseAfterSend = release;
 	}
 
 	public int writeableSize() {
@@ -38,10 +40,9 @@ public class SendRequest extends PooledObjectBase {
 	public void clear() {
 		this.buffer = null;
 		this.target = null;
-		this.release = false;
+		this.releaseAfterSend = false;
 	}
 
-	@Override
 	public void release() {
 		clear();
 		POOL.giveBack(this);

@@ -734,7 +734,6 @@ class ConnectionManagerTest {
 				.hasMessage("ssi is marked non-null but is null");
 	}
 
-
 	@Test
 	void portCanChange_heartbeat() {
 		// GIVEN
@@ -748,6 +747,34 @@ class ConnectionManagerTest {
 		// THEN
 		assertThat(conn.metrics().lastReceivedHeartbeatTime()).isEqualTo(2L);
 		assertThat(conn.address).isEqualTo(portChangedAddr);
+	}
+
+	@Test
+	void dataReceived() {
+		// GIVEN
+		UdpConnection conn = givenIncomingConnection(addr, csi);
+		reset(timeMachine);
+
+		// WHEN
+		connMgr.dataReceived(conn.csi, conn.ssi, 42);
+
+		// THEN
+		assertThat(conn.metrics().receivedPacketCount()).isEqualTo(1L);
+		assertThat(conn.metrics().receivedBytes()).isEqualTo(42L);
+	}
+
+	@Test
+	void dataReceived_connectionNotFound() {
+		// GIVEN
+		UdpConnection conn = givenIncomingConnection(addr, csi);
+		reset(timeMachine);
+
+		// WHEN
+		connMgr.dataReceived(conn.csi, ssi, 42);
+
+		// THEN
+		assertThat(conn.metrics().receivedPacketCount()).isEqualTo(0);
+		assertThat(conn.metrics().receivedBytes()).isEqualTo(0);
 	}
 
 	@Test

@@ -1,15 +1,23 @@
 package org.net.endpoint.udp.endpoint;
 
 import org.junit.jupiter.api.Test;
+import org.net.endpoint.common.BufferPool;
+import org.net.endpoint.common.TimeMachine;
 import org.net.endpoint.udp.connection.UdpConnection;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.net.endpoint.TestUtil.HOST;
 import static org.net.endpoint.TestUtil.waitFor;
 
@@ -105,7 +113,6 @@ class UnreliableUdpEndpointTest extends SenderReceiverTestBase {
 		assertThat(waitFor(() -> (int)receiver.metrics().unknownPacketCount(), 1)).isTrue();
 		assertThat(waitFor(() -> (int)receiver.metrics().unknownBytes(), 4)).isTrue();
 	}
-
 
 	public static void sendUdpPacket(InetSocketAddress addr, ByteBuffer payload) throws IOException {
 		try (DatagramChannel channel = DatagramChannel.open(StandardProtocolFamily.INET)) {
