@@ -52,6 +52,10 @@ It can act as:
 
 This keeps the API simple and avoids hidden state or role‑dependent behavior.
 
+**Note**: This module is meant to be used like any regular dependency.
+To do that, you must first **publish it to your local Maven repository** so other
+projects can resolve it normally.
+
 **What Happens When You Start an Endpoint**
 Starting an endpoint automatically spins up:
 - a listener thread (receives packets)

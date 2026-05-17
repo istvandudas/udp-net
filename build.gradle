@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'jacoco'
     id 'io.freefair.lombok' version '9.1.0'
+    id 'maven-publish'
 }
 
 group = 'org.net.endpoint'
@@ -21,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    implementation("it.unimi.dsi:fastutil:$fastutilsVersion")
+    implementation("it.unimi.dsi:fastutil:$fastutilVersion")
     implementation("org.hdrhistogram:HdrHistogram:$hdrHistogramVersion")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("org.jctools:jctools-core-jdk11:$jctoolsVersion")
@@ -103,3 +104,13 @@ test {
     finalizedBy jacocoTestReport
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}
